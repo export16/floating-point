@@ -1,10 +1,10 @@
-module fp_16(
+module fp_cnt(
     input clk,
     input rstn,
     input input_valid,
     input [7:0] fp_data_1,
     input [7:0] fp_data_2,
-    input [15:0] input_data,
+    input [31:0] input_data,
     output reg out_valid,
     output reg [31:0] data_out
 );
@@ -12,48 +12,44 @@ module fp_16(
 
     wire infinity_1, infinity_2;
 
-    wire [5:0] exp_16;
+    wire [7:0] exp_16;
     wire [5:0] sf_16;
 
-    wire [4:0] exp_fp_1;
-    wire [14:0] sf_fp_1;
-    wire [4:0] exp_fp_2;
-    wire [10:0] sf_fp_2;
+    wire [7:0] exp_fp_1;
+    wire [5:0] sf_fp_1;
 
-    assign exp_16 = (fp_data_1[6:2] == 31 || fp_data_2 == 31) ? 46 : fp_data_1[6:2] + fp_data_2[6:2];
+    assign exp_16 = (fp_data_1[6:2] == 31 || fp_data_2 == 31) ? 255 : fp_data_1[6:2] + fp_data_2[6:2] + 97;
     assign sf_16 = ((fp_data_1[6:2] == 31 && fp_data_1[1:0] == 0) || (fp_data_2[6:2] == 31 && fp_data_2[1:0] == 0)) ? 0 : {(fp_data_1[6:2] == 0 ? 0 : 1), fp_data_1[1:0]} * {(fp_data_2[6:2] == 0 ? 0 : 1), fp_data_2[1:0]};
-    assign exp_fp_1 = (exp_16 > 15 && exp_16 != 46 && sf_16[5] == 1) ? exp_16 - 14 : (exp_16 > 15) ? exp_16 - 15 : 1;
-    assign sf_fp_1 = (exp_16 > 15 && sf_16[5] == 1) ? {1'h0, sf_16, 8'h0} : (exp_16 > 15) ? {sf_16, 9'h0} : ({sf_16, 9'h0} >> (15 - exp_16)) | ((sf_16 & ((1 << (6 - exp_16)) - 1)) != 0);
-    assign exp_fp_2 = (exp_fp_1 == 31) ? 31 : ((sf_fp_1 + (sf_fp_1[2] && (sf_fp_1[3] | sf_fp_1[1] | sf_fp_1[0]))) & 15'h4000) != 0 ? exp_fp_1 + 1 : exp_fp_1;
-    assign sf_fp_2 = (exp_16 == 31) ? 0 : ((sf_fp_1 + (sf_fp_1[2] && (sf_fp_1[3] | sf_fp_1[1] | sf_fp_1[0]))) & 15'h4000) != 0 ? ((sf_fp_1 + (sf_fp_1[2] && (sf_fp_1[3] | sf_fp_1[1] | sf_fp_1[0]))) >> 4) : (sf_fp_1 + (sf_fp_1[2] && (sf_fp_1[3] | sf_fp_1[1] | sf_fp_1[0])) >> 3);
+    assign exp_fp_1 = (sf_16[5] == 1) ? exp_16 + 1 : exp_16;
+    assign sf_fp_1 = (sf_16[5] == 1) ? sf_16 : {sf_16[4:0], 1'h0};
 
-    wire [4:0] exp_1;
-    wire [4:0] exp_2;
+    wire [7:0] exp_1;
+    wire [7:0] exp_2;
     wire [26:0] sf_1;
-    wire [26:0] sf_2;    
+    wire [26:0] sf_2;
 
-    assign exp_1 = exp_fp_2 < input_data[14:10] ? input_data[14:10] : exp_fp_2;
-    assign exp_2 = input_data[14:10] < exp_fp_2 ? exp_fp_2 : input_data[14:10];
-    assign sf_1 = (exp_fp_2 < input_data[14:10]) ? ({sf_fp_2, 16'h0} >> (input_data[14:10] - exp_fp_2) | ({sf_fp_2, 16'h0} & ((1 << (input_data[14:10] - exp_fp_2)) - 1) != 0)) : {sf_fp_2, 16'h0};
-    assign sf_2 = (input_data[14:10] < exp_fp_2) ? ({(input_data[14:10] == 0) ? 0 : 1, input_data[9:0], 16'h0} >> (exp_fp_2 - input_data[14:10]) | ({(input_data[14:10] == 0) ? 0 : 1, input_data[9:0], 16'h0} & ((1 << (exp_fp_2 - input_data[14:10])) - 1) != 0)) : {(input_data[14:10] == 1) ? 1 : 0, input_data[9:0], 16'h0};
+    assign exp_1 = exp_fp_1 < input_data[30:23] ? input_data[30:23] : exp_fp_1;
+    assign exp_2 = input_data[30:23] < exp_fp_1 ? exp_fp_1 : input_data[30:23];
+    assign sf_1 = (exp_fp_1 < input_data[30:23]) ? ({sf_fp_1, 21'h0} >> (input_data[30:23] - exp_fp_1) | ({sf_fp_1, 21'h0} & ((1 << (input_data[30:23] - exp_fp_1)) - 1) != 0)) : {sf_fp_1, 21'h0};
+    assign sf_2 = (input_data[30:23] < exp_fp_1) ? ({(input_data[30:23] == 0) ? 0 : 1, input_data[22:0], 3'h0} >> (exp_fp_1 - input_data[30:23]) | ({(input_data[30:23] == 0) ? 0 : 1, input_data[22:0], 3'h0} & ((1 << (exp_fp_1 - input_data[30:23])) - 1) != 0)) : {(input_data[30:23] == 1) ? 1 : 0, input_data[22:0], 3'h0};
 
     wire sign;
 
     assign infinity_1 = (fp_data_1[6:2] == 31 && fp_data_1[1:0] == 0 && fp_data_2[6:0] != 0) || (fp_data_2[6:2] == 31 && fp_data_2[1:0] && fp_data_1[6:0] != 0);
-    assign infinity_2 = (input_data[14:10] == 31 && input_data[9:0] == 0);
+    assign infinity_2 = (input_data[30:23] == 255 && input_data[22:0] == 0);
 
     wire infinity, nan_num;
 
-    assign nan_num = (fp_data_1[6:2] == 0 && fp_data_1[1:0] != 0) || (fp_data_2[6:2] == 0 && fp_data_2[1:0] != 0) || (input_data[14:10] == 0 && input_data[9:0] != 0) || (infinity_1 && infinity_2 && (fp_data_1[7] ^ fp_data_2[7]) != input_data[15]);
+    assign nan_num = (fp_data_1[6:2] == 0 && fp_data_1[1:0] != 0) || (fp_data_2[6:2] == 0 && fp_data_2[1:0] != 0) || (input_data[30:23] == 0 && input_data[22:0] != 0) || (infinity_1 && infinity_2 && (fp_data_1[7] ^ fp_data_2[7]) != input_data[31]);
     assign infinity = !nan_num && (infinity_1 || infinity_2);
 
-    assign sign = ((fp_data_1[7] ^ fp_data_2[7]) == input_data[15]) ? input_data[15] : (sf_1 >= sf_2) ? (fp_data_1[7] ^ fp_data_2[7]) : input_data[15];
+    assign sign = ((fp_data_1[7] ^ fp_data_2[7]) == input_data[31]) ? input_data[31] : (sf_1 >= sf_2) ? (fp_data_1[7] ^ fp_data_2[7]) : input_data[31];
 
     wire [7:0] exp_out_1;
     wire [27:0] sf_out_1;
 
-    assign exp_out_1 = exp_1 + 112;
-    assign sf_out_1 = ((fp_data_1[7] ^ fp_data_2[7]) == input_data[15]) ? sf_1 + sf_2 : (sf_1 > sf_2) ? sf_1 - sf_2 : sf_2 - sf_1;
+    assign exp_out_1 = exp_1;
+    assign sf_out_1 = ((fp_data_1[7] ^ fp_data_2[7]) == input_data[31]) ? sf_1 + sf_2 : (sf_1 > sf_2) ? sf_1 - sf_2 : sf_2 - sf_1;
 
     wire [7:0] exp_out_2;
     wire [26:0] sf_out_2;
