@@ -25,9 +25,6 @@ module fp_32_adder(
     assign fp_data_sf_2 = {(fp_data_2[30:23] == 0 ? 0 : 1), fp_data_2[22:0], 3'h0};
 
 
-    wire [29:0] x1 = (fp_data_sf_1 & ((1 << (fp_data_2[30:23] - fp_data_1[30:23])) - 1) != 0);
-    wire [29:0] c2 = (fp_data_sf_2 & ((1 << (fp_data_1[30:23] - fp_data_2[30:23])) - 1) != 0);
-
     wire [26:0] sf_1;
     wire [26:0] sf_2;
 

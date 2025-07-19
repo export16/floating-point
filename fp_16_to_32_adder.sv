@@ -3,7 +3,7 @@ module fp_16_to_32_adder(
     input rstn,
     input [15:0] fp_data_1,
     input [15:0] fp_data_2,
-    output reg [31:0] data_out
+    output [31:0] data_out
 );
     
     wire nan_num_1;
@@ -34,8 +34,8 @@ module fp_16_to_32_adder(
 
     assign exp_1 = fp_data_1[14:10] < fp_data_2[14:10] ? fp_data_2[14:10] : fp_data_1[14:10];
     assign exp_2 = fp_data_2[14:10] < fp_data_1[14:10] ? fp_data_1[14:10] : fp_data_2[14:10];
-    assign sf_1 = (fp_data_1[14:10] < fp_data_2[14:10]) ? ((fp_data_sf_1 >> (fp_data_2[14:10] - fp_data_1[14:10]) | ((fp_data_sf_1 & ((1 << (fp_data_2[14:10] - fp_data_1[14:10])) - 1)) != 0))) : fp_data_sf_1;
-    assign sf_2 = (fp_data_2[14:10] < fp_data_1[14:10]) ? ((fp_data_sf_2 >> (fp_data_1[14:10] - fp_data_2[14:10]) | ((fp_data_sf_2 & ((1 << (fp_data_1[14:10] - fp_data_2[14:10])) - 1)) != 0))) : fp_data_sf_2;
+    assign sf_1 = (fp_data_1[14:10] < fp_data_2[14:10]) ? ((fp_data_sf_1 >> (fp_data_2[14:10] - fp_data_1[14:10])) | ((fp_data_sf_1 & ((1 << (fp_data_2[14:10] - fp_data_1[14:10])) - 1)) != 0)) : fp_data_sf_1;
+    assign sf_2 = (fp_data_2[14:10] < fp_data_1[14:10]) ? ((fp_data_sf_2 >> (fp_data_1[14:10] - fp_data_2[14:10])) | ((fp_data_sf_2 & ((1 << (fp_data_1[14:10] - fp_data_2[14:10])) - 1)) != 0)) : fp_data_sf_2;
 
     wire sign;
 
@@ -81,23 +81,11 @@ module fp_16_to_32_adder(
     assign sf_out_6 = sf_out_5[26] == 0 ? sf_out_5 << 1 : sf_out_5;
     
     wire [7:0] exp_out;
-    wire [26:0] sf_out;
+    wire [24:0] sf_out;
 
     assign exp_out = ((sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0]))) & 25'h1000000) != 25'h0 ? exp_out_6 + 1 : exp_out_6;
-    assign sf_out = ((sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0]))) & 25'h1000000) != 25'h0 ? {sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0])), 2'h0} : {sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0])), 3'h0};
+    assign sf_out = ((sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0]))) & 25'h1000000) != 25'h0 ? sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0])) : {sf_out_6[26:3] + (sf_out_6[2] & (sf_out_6[3] | sf_out_6[1] | sf_out_6[0])), 1'h0};
     
-    always@(posedge clk or negedge rstn) begin
-        if(!rstn) begin
-            data_out <= 0;
-        end
-        else begin
-            if(infinity)
-                data_out <= {sign, 8'hFF, 23'h0};
-            else if(nan_num)
-                data_out <= {sign, 8'hFF, 23'h7FFFFF};
-            else
-                data_out <= {sign, exp_out, sf_out[22:0]};
-        end
-    end
+    assign data_out = nan_num ? {sign, 8'hFF, 23'h7FFFFF} : infinity ? {sign, 8'hFF, 23'h0} : {sign, exp_out, sf_out[23:1]};
 
 endmodule

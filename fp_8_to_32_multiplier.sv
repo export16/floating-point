@@ -1,11 +1,8 @@
 module fp_8_to_32_multiplier(
     input clk,
     input rstn,
-    input input_valid,
     input [7:0] fp_data_1,
     input [7:0] fp_data_2,
-    output nan_num,
-    output infinity,
     output [31:0] data_out
 );
 
@@ -19,6 +16,13 @@ module fp_8_to_32_multiplier(
     assign sf_1 = {(fp_data_1[6:2] == 0 ? 0 : 1), fp_data_1[1:0]} * {(fp_data_2[6:2] == 0 ? 0 : 1), fp_data_2[1:0]};
     assign exp_2 = (exp_1 == 0) ? 0 : (sf_1[5] == 1) ? exp_1 + 1 : (sf_1[4:1] == 0) ? exp_1 - 4 : (sf_1[4:2] == 0) ? exp_1 - 3 : (sf_1[4:3] == 0) ? exp_1 - 2 : (sf_1[4] == 0) ? exp_1 - 1 : exp_1;
     assign sf_2 = (exp_1 == 0) ? 0 : (sf_1[5] == 1) ? sf_1[4:0] : (sf_1[4:1] == 0) ? 5'h0 : (sf_1[4:2] == 0) ? {sf_1[0], 4'h0} : (sf_1[4:3] == 0) ? {sf_1[1:0], 3'h0} : (sf_1[4] == 0) ? {sf_1[2:0], 2'h0} : {sf_1[3:0], 1'h0};
+
+    wire sign;
+    
+    assign sign = (fp_data_1[7] ^ fp_data_2[7]);
+
+    wire nan_num;
+    wire infinity;
 
     assign nan_num = ((fp_data_1[6:2] == 31 && fp_data_1[1:0] != 0) || (fp_data_2[6:2] == 31 && fp_data_2[1:0] != 0));
     assign infinity = !nan_num && ((fp_data_1[6:2] == 31 && fp_data_1[1:0] == 0) || (fp_data_2[6:2] == 31 && fp_data_2[1:0] == 0 && fp_data_1[6:0] != 0));
